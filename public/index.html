@@ -5,22 +5,34 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 body{font-family:Arial;background:#111;color:#fff;padding:20px;text-align:center}
-input{padding:10px;width:70%;border-radius:8px;border:none}
-button{padding:10px 20px;margin:10px;border-radius:8px;border:none;background:#ff0050;color:#fff;font-weight:bold;cursor:pointer}
-#status{margin:20px;padding:15px;border-radius:10px}
+input{padding:12px;width:80%;border-radius:8px;border:none;font-size:16px}
+.btn{padding:12px 20px;margin:8px;border-radius:10px;border:none;color:#fff;font-weight:bold;cursor:pointer;font-size:14px}
+.btn-live{background:#ff0050} .btn-off{background:#444}
+.btn-test{background:#00b0ff} .btn-digital{background:#00c853}
+#status{margin:20px;padding:15px;border-radius:10px;font-weight:bold}
 .conectado{background:#00c853} .desconectado{background:#d50000}
-#logs{background:#222;padding:15px;border-radius:10px;height:300px;overflow-y:auto;text-align:left;margin-top:20px}
+#logs{background:#222;padding:15px;border-radius:10px;height:320px;overflow-y:auto;text-align:left;margin-top:20px;font-size:14px}
+.row{display:flex;justify-content:center;flex-wrap:wrap}
 </style>
 <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 <h2>🖨️ Impresora TikTok</h2>
-<input id="username" placeholder="Usuario TikTok: elruso o tu.foto.en.vivo">
-<br>
-<button onclick="conectar()">CONECTAR LIVE</button>
-<button onclick="desconectar()">DESCONECTAR</button>
+<input id="username" placeholder="Usuario: elruso o tu.foto.en.vivo" value="tu.foto.en.vivo">
+
+<div class="row">
+<button class="btn btn-live" onclick="conectar()">CONECTAR LIVE</button>
+<button class="btn btn-off" onclick="desconectar()">DESCONECTAR</button>
+</div>
+
+<div class="row">
+<button class="btn btn-test" onclick="pruebaFisica()">🖨️ PRUEBA FÍSICA</button>
+<button class="btn btn-digital" onclick="pruebaDigital()">📱 PRUEBA DIGITAL</button>
+</div>
+
 <div id="status" class="desconectado">Estado: Desconectado</div>
 <div id="logs"></div>
+
 <script>
 const socket = io();
 const statusDiv = document.getElementById('status');
@@ -34,9 +46,24 @@ function conectar(){
 }
 function desconectar(){ socket.emit('disconnectTikTok'); }
 
+function pruebaFisica(){
+  const data = { user: { uniqueId: 'PRUEBA' }, giftName: 'Rosa', repeatCount: 1, comment: 'PRUEBA FISICA' };
+  logsDiv.innerHTML += `<div style="color:#00b0ff">🖨️ Enviando PRUEBA FISICA a impresora...</div>`;
+  socket.emit('print', data);
+  // Si tu impresora está conectada por USB/ESC-POS, esto la dispara
+  window.printTest && window.printTest(data);
+  logsDiv.innerHTML += `<div>✅ Prueba física enviada</div>`;
+}
+
+function pruebaDigital(){
+  logsDiv.innerHTML += `<div style="color:#00e676">📱 PRUEBA DIGITAL: Tu.foto.en.vivo recibió 1 Rosa de PRUEBA</div>`;
+  logsDiv.innerHTML += `<div style="border:1px dashed #00e676;padding:8px;margin:5px 0">🖼️ IMAGEN DE PRUEBA - Se imprimiría foto</div>`;
+  logsDiv.scrollTop = logsDiv.scrollHeight;
+}
+
 socket.on('tiktokConnected', (user)=>{
   statusDiv.className='conectado';
-  statusDiv.innerText='Estado: Conectado a @' + user + ' - EN VERDE';
+  statusDiv.innerText='Estado: Conectado a @' + user + ' ✅';
   logsDiv.innerHTML += `<div style="color:#00e676">✅ CONECTADO A @${user}</div>`;
 });
 socket.on('tiktokDisconnected', ()=>{
@@ -48,11 +75,11 @@ socket.on('tiktokError', (msg)=>{
   logsDiv.innerHTML += `<div style="color:#ff5252">Error: ${msg}</div>`;
 });
 socket.on('gift', (data)=>{
-  logsDiv.innerHTML += `<div>🎁 ${data.user.uniqueId} envió ${data.giftName} x${data.repeatCount}</div>`;
+  logsDiv.innerHTML += `<div>🎁 ${data.uniqueId || data.user?.uniqueId} envió ${data.giftName || data.giftId} x${data.repeatCount || 1}</div>`;
   logsDiv.scrollTop = logsDiv.scrollHeight;
 });
 socket.on('chat', (data)=>{
-  logsDiv.innerHTML += `<div>💬 ${data.user.uniqueId}: ${data.comment}</div>`;
+  logsDiv.innerHTML += `<div>💬 ${data.uniqueId || data.user?.uniqueId}: ${data.comment || data.content}</div>`;
 });
 </script>
 </body>
