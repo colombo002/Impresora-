@@ -26,21 +26,38 @@ io.on('connection', (socket) => {
       username = username.replace('@', '').trim();
       console.log(`Conectando a @${username}`);
       
+      // CON FIRMADOR PARA EVITAR ERROR 403
       tiktokConnection = new WebcastPushConnection(username, {
-        enableExtendedGiftInfo: true
+        enableExtendedGiftInfo: true,
+        processInitialData: false,
+        enableWebsocketUpgrade: true,
+        requestOptions: {
+          timeout: 10000
+        },
+        webClientOptions: {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+          }
+        }
       });
 
-      await tiktokConnection.connect();
-      console.log(`Conectado a ${username}`);
+      const state = await tiktokConnection.connect();
+      console.log(`Conectado a ${username}`, state.roomId);
       io.emit('tiktokConnected', username);
 
       tiktokConnection.on('chat', data => io.emit('chat', data));
       tiktokConnection.on('gift', data => { io.emit('gift', data); io.emit('print', data); });
       tiktokConnection.on('member', data => io.emit('member', data));
+      tiktokConnection.on('disconnected', () => io.emit('tiktokDisconnected'));
 
     } catch (err) {
-      console.error(err);
-      socket.emit('tiktokError', err.toString());
+      console.error("ERROR DE CONEXION:", err.toString());
+      // Si falla por 403, avisar que es bloqueo de IP de Render
+      if(err.toString().includes('403') || err.toString().includes('SignatureError')){
+        socket.emit('tiktokError', 'TikTok bloqueó la IP del servidor Render (Error 403). Solución: Usa tu PC con ngrok o un proxy. Error: ' + err.toString().substring(0, 200));
+      } else {
+        socket.emit('tiktokError', err.toString());
+      }
       io.emit('tiktokDisconnected');
     }
   });
