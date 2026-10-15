@@ -1,6 +1,6 @@
 {
-  "name": "impresora",
-  "version": "1.0.0",
+  "name": "impresora-tiktok",
+  "version": "2.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -8,6 +8,7 @@
   "dependencies": {
     "express": "^4.18.2",
     "socket.io": "^4.7.2",
-    "tiktok-live-connector": "^2.5.0"
+    "cors": "^2.8.5",
+    "tiktok-live-connector": "^1.1.7"
   }
 }
