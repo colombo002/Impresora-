@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Impresora TikTok</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{font-family:Arial;background:#111;color:#fff;padding:20px;text-align:center}
+input{padding:10px;width:70%;border-radius:8px;border:none}
+button{padding:10px 20px;margin:10px;border-radius:8px;border:none;background:#ff0050;color:#fff;font-weight:bold;cursor:pointer}
+#status{margin:20px;padding:15px;border-radius:10px}
+.conectado{background:#00c853} .desconectado{background:#d50000}
+#logs{background:#222;padding:15px;border-radius:10px;height:300px;overflow-y:auto;text-align:left;margin-top:20px}
+</style>
+<script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+<h2>🖨️ Impresora TikTok</h2>
+<input id="username" placeholder="Usuario TikTok: elruso o tu.foto.en.vivo">
+<br>
+<button onclick="conectar()">CONECTAR LIVE</button>
+<button onclick="desconectar()">DESCONECTAR</button>
+<div id="status" class="desconectado">Estado: Desconectado</div>
+<div id="logs"></div>
+<script>
+const socket = io();
+const statusDiv = document.getElementById('status');
+const logsDiv = document.getElementById('logs');
+
+function conectar(){
+  const user = document.getElementById('username').value;
+  if(!user) return alert('Pon un usuario');
+  logsDiv.innerHTML += `<div>> Conectando a @${user}...</div>`;
+  socket.emit('setUsername', user);
+}
+function desconectar(){ socket.emit('disconnectTikTok'); }
+
+socket.on('tiktokConnected', (user)=>{
+  statusDiv.className='conectado';
+  statusDiv.innerText='Estado: Conectado a @' + user + ' - EN VERDE';
+  logsDiv.innerHTML += `<div style="color:#00e676">✅ CONECTADO A @${user}</div>`;
+});
+socket.on('tiktokDisconnected', ()=>{
+  statusDiv.className='desconectado';
+  statusDiv.innerText='Estado: Desconectado';
+  logsDiv.innerHTML += `<div style="color:#ff5252">❌ Desconectado</div>`;
+});
+socket.on('tiktokError', (msg)=>{
+  logsDiv.innerHTML += `<div style="color:#ff5252">Error: ${msg}</div>`;
+});
+socket.on('gift', (data)=>{
+  logsDiv.innerHTML += `<div>🎁 ${data.user.uniqueId} envió ${data.giftName} x${data.repeatCount}</div>`;
+  logsDiv.scrollTop = logsDiv.scrollHeight;
+});
+socket.on('chat', (data)=>{
+  logsDiv.innerHTML += `<div>💬 ${data.user.uniqueId}: ${data.comment}</div>`;
+});
+</script>
+</body>
+</html>
