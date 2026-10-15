@@ -7,17 +7,19 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-app.use(express.static('public'));
 app.use(require('cors')());
 
 let tiktokConnection = null;
 let currentUsername = null;
 
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/public/index.html');
+  res.send(`
+    <h2>Impresora TikTok - ONLINE</h2>
+    <p>Estado: ${currentUsername ? 'Conectado a @' + currentUsername : 'Desconectado'}</p>
+    <p>Usa tu panel de impresora para conectar.</p>
+  `);
 });
 
-// Ruta para verificar estado
 app.get('/status', (req, res) => {
   res.json({ connected: !!tiktokConnection, username: currentUsername });
 });
@@ -31,40 +33,34 @@ io.on('connection', (socket) => {
         tiktokConnection.disconnect();
         tiktokConnection = null;
       }
-
       username = username.replace('@', '').trim();
       if (!username) return socket.emit('tiktokError', 'Usuario vacío');
-
-      console.log(`Intentando conectar a: ${username}`);
+      
+      console.log(`Conectando a: ${username}`);
       currentUsername = username;
 
       tiktokConnection = new TikTokLiveConnection(username, {
         enableExtendedGiftInfo: true,
-        enableWebsocketUpgrade: true,
-        requestPollingIntervalMs: 1000
+        enableWebsocketUpgrade: true
       });
 
       await tiktokConnection.connect();
-      console.log(`Conectado a ${username} OK`);
+      console.log(`Conectado OK a ${username}`);
       io.emit('tiktokConnected', username);
 
       tiktokConnection.on(WebcastEvent.CHAT, data => {
-        io.emit('chat', { user: data.user.uniqueId, comment: data.comment });
+        io.emit('chat', data);
+        io.emit('print', data);
       });
 
       tiktokConnection.on(WebcastEvent.GIFT, data => {
-        console.log('GIFT:', data.user.uniqueId, data.giftName);
         io.emit('gift', data);
-        io.emit('print', data); // Para la impresora
-      });
-
-      tiktokConnection.on(WebcastEvent.MEMBER, data => {
-        io.emit('member', data);
+        io.emit('print', data);
       });
 
     } catch (err) {
       console.error('Error TikTok:', err.message);
-      socket.emit('tiktokError', err.message || 'No está en LIVE o bloqueado');
+      socket.emit('tiktokError', err.message);
       io.emit('tiktokDisconnected');
     }
   });
@@ -75,12 +71,9 @@ io.on('connection', (socket) => {
       tiktokConnection = null;
       currentUsername = null;
       io.emit('tiktokDisconnected');
-      console.log('Desconectado');
     }
   });
 });
 
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => {
-  console.log(`Servidor en puerto ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Servidor en puerto ${PORT}`));
